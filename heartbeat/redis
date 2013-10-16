@@ -197,7 +197,7 @@ read_ms_status() {
     local master_host_value
 
     tmp=$(mktemp -p $HA_RSCTMP)
-    redis-cli info >$tmp
+    $OCF_RESKEY_client_binary -p $OCF_RESKEY_port info >$tmp
     if [ $? -ne 0 ]; then
         ocf_log info "Could not determine master/slave status";
         rm -f $tmp
@@ -253,7 +253,7 @@ set_master() {
     local master_host=$1
 
     ocf_log info "Set $REDIS_SERVER_NAME to be a slave of $master_host";
-    ocf_run $OCF_RESKEY_client_binary slaveof $master_host $OCF_RESKEY_port
+    ocf_run $OCF_RESKEY_client_binary -p $OCF_RESKEY_port slaveof $master_host $OCF_RESKEY_port
     return $?
 }
 
@@ -261,7 +261,7 @@ unset_master() {
     local rc
 
     ocf_log info "Set $REDIS_SERVER_NAME to become a slave of no one";
-    ocf_run $OCF_RESKEY_client_binary slaveof no one
+    ocf_run $OCF_RESKEY_client_binary -p $OCF_RESKEY_port slaveof no one
     return $?
 }
 
@@ -340,7 +340,7 @@ redis_start() {
     touch $OCF_RESKEY_pid
     chown $OCF_RESKEY_user:$OCF_RESKEY_group $OCF_RESKEY_pid
 
-    start-stop-daemon --start --quiet --umask 007 --pidfile $OCF_RESKEY_pid --make-pidfile --chuid $OCF_RESKEY_user:$OCF_RESKEY_group --exec  /usr/local/bin/redis-server -- $OCF_RESKEY_config
+    start-stop-daemon --start --quiet --umask 007 --pidfile $OCF_RESKEY_pid --make-pidfile --chuid $OCF_RESKEY_user:$OCF_RESKEY_group --exec `which $OCF_RESKEY_binary` -- $OCF_RESKEY_config
     rc=$?
 
     if [ $rc -ne 0 ]; then
@@ -356,7 +356,7 @@ redis_start() {
         if [ ! -z "$master_host" -a "$master_host" != $(uname -n) ]; then
             ocf_log info "Changing redis configuration to replicate from host: $master_host"
             while true; do
-                $OCF_RESKEY_client_binary info |grep 'loading:0'
+                $OCF_RESKEY_client_binary -p $OCF_RESKEY_port info |grep 'loading:0'
                 if [ $? -eq 0 ]; then
                     break
                 else
